@@ -1,6 +1,6 @@
 {
   "name": "grok-digest",
-  "version": "0.5.17",
+  "version": "0.5.18",
   "description": "Astro integration that renders a Grok Digest site: X bookmarks summarized by Grok, searchable, sorted by topic, with RSS feeds.",
   "keywords": [
     "astro",
