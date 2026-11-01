@@ -247,10 +247,11 @@ To undo a change, delete the setting, the CSS, or the component file and its cop
 
 `custom/config.json` is one JSON object. Leave out a setting to keep its default. `bun run validate` rejects a setting it does not know and names it. 0.5.8 removed `defaultView`, `reviewSize`, and `detail`; if validation names one of them, delete it from the file.
 
-| Setting     | Default         | What it does                                                            |
-| ----------- | --------------- | ----------------------------------------------------------------------- |
-| `title`     | `"Grok Digest"` | The page's name in the header, the browser tab, and on the home screen. |
-| `swipeMode` | `true`          | `false` hides the Swipe button and the `s` shortcut.                    |
+| Setting        | Default         | What it does                                                                                                                                                                                                        |
+| -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`        | `"Grok Digest"` | The page's name in the header, the browser tab, and on the home screen.                                                                                                                                             |
+| `swipeMode`    | `true`          | `false` hides the Swipe button and the `s` shortcut.                                                                                                                                                                |
+| `ask.endpoint` | none            | The owner's Ask relay, such as `"https://relay.example.com"`. Readers can then select text and ask about it. Leave it out to turn Ask off. Set it only when the owner gives you the address; never put a key in it. |
 
 ```json
 {

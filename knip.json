@@ -6,6 +6,7 @@
     "src/cli.ts",
     "src/pages/**/*.{astro,ts}",
     "src/routes/**/*.ts",
+    "src/lib/ask-mount.ts",
     "src/styles/theme.css",
     "scripts/*.{mjs,js}"
   ],

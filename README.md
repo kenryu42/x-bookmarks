@@ -47,7 +47,7 @@ A site changes its page from `custom/`, and keeps every release for the parts it
 
 | Path                                  | Changes                                                                                                                                                                                                                                 |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `custom/config.json`                  | Settings: `title` and `swipeMode`. `validate` checks the file.                                                                                                                                                                          |
+| `custom/config.json`                  | Settings: `title`, `swipeMode`, and `ask`. `validate` checks the file.                                                                                                                                                                  |
 | `custom/theme.css`                    | Plain CSS loaded after the page's own: the color variables, fonts, and any selector.                                                                                                                                                    |
 | `custom/components/<Component>.astro` | Replaces `Header`, `Footer`, or `BookmarkCard`. Tailwind classes in it work.                                                                                                                                                            |
 | `custom/components/<Component>.tsx`   | Replaces a part of the controls: `ControlsLayout`, `SearchField`, `TopicChips`, `FilterMenu`, `StatusLine`, `KeyboardHints`, `UndoToast`, or `DoneCleanup`; or of swipe mode: `SwipeHeader`, `SwipeCard`, `SwipeFooter`, or `SwipeEnd`. |
@@ -120,6 +120,47 @@ A site with at least one issue, a `data/magazine/<YYYY-MM-DD>.json` file, also g
 An issue is data the Grok bot writes once a day, described in `BOT.md` under "Write a magazine issue": a title, a theme chosen from preset palettes and font pairings, and a list of blocks that show bookmarks, such as a cover story, a pull quote, or a timeline. The package draws every block, so an issue holds no HTML, CSS, or web address. Each issue has a cover picture the bot makes, `data/magazine/<YYYY-MM-DD>.jpg` (or `.png`, `.webp`). The build resizes it for each screen, and the page sets the site's title across its top. An issue without one gets a lettered cover in its palette's color, and `validate` warns. The bot can also make up to three more pictures for blocks whose post has no image, `art` on a `cover-story` or `feature`, one `image-of-the-day` block, and up to four `interlude` blocks, pictures that give a pause between corners in a `wide`, `square`, or `quiet` shape. One `painting` block can also show a famous public-domain artwork the bot downloads, uncropped, with a museum label linking its source; it does not count toward those limits. They live in `data/magazine/<YYYY-MM-DD>/`, the build resizes them the same way, and `validate` fails a path that leaves that folder. When a block names a bookmark that is gone from `data/bookmarks.json`, the page leaves out that item, or the whole block when too few items are left, and `validate` warns. A block can name a scan from `data/scans.json` instead of a bookmark; a scan without a card on the page links to its post on X. `corner` blocks open recurring sections, drawn the same in every issue, and group the "In this issue" list; a `closer` ends the issue quietly.
 
 Each issue page has a Magazine / Digest switch at the top. Digest shows the same issue as a compact list for a quick read: each post once, in issue order, under its corner, with its "Why it matters" line (or, without one, the block's note or the post's tldr), its source, author, tags, and links to its card and to X. The page remembers the choice in the browser. `magazine/<YYYY-MM-DD>/?view=digest` and `magazine/<YYYY-MM-DD>/#digest` open the digest; `#digest` works with JavaScript off too, since both views are in the page and CSS shows the one the address targets.
+
+### Ask (optional)
+
+A site can let a reader select a passage and ask about it. It is off by default: a site without an endpoint ships no Ask code or markup. Turn it on with `ask` in `custom/config.json`:
+
+```json
+{ "ask": { "endpoint": "https://relay.example.com" } }
+```
+
+The `PUBLIC_GROK_DIGEST_ASK_ENDPOINT` environment variable, when set and not empty, takes the place of the setting at `build`, `dev`, and `preview`. Either one must be an `http` or `https` address without a query or `#fragment`; a trailing `/` is dropped. `validate` and the build fail on an invalid one.
+
+The endpoint is a relay the site owner runs. The page holds no key and sends no `Authorization` header or cookies (`mode: "cors"`, `credentials: "omit"`); the relay keeps any key server-side. The relay must answer CORS requests from the site's origin, such as `https://<your-username>.github.io`, and from `http://localhost:4321` to work with `dev`, and allow the `Content-Type: application/json` header on `POST /ask`.
+
+| Request               | Body or query            | Answer                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`         |                          | Any `2xx`. The page asks once per load and waits 2 seconds; without a `2xx` in time it shows nothing.                                                                                                                                                                                                                                               |
+| `POST /ask`           | JSON, below              | `2xx` with `{ "request_id": "<id>" }`. Errors show a short message: `400` the question could not be read, `403` the site is not allowed, `429` the limit of 30 questions an hour, `502` the relay could not reach its assistant, `503` the relay is not set up. Another status, a missing `request_id`, or a network error shows a general message. |
+| `GET /answer?id=<id>` | `id` is the `request_id` | `{ "status": "pending" }` until `{ "status": "done", "answer": "<markdown>" }`, or `{ "status": "error" }`. The page asks every 2 seconds for up to 3 minutes, then says it timed out. A `404` means the relay lost the question; the page stops and asks the reader to ask again. Other errors and network failures keep it polling.               |
+
+`POST /ask` sends:
+
+```json
+{
+  "question": "What does this mean for small teams?",
+  "quote": "the passage the reader selected",
+  "page_url": "https://example.github.io/bm/magazine/2026-02-13/",
+  "page_title": "Hunger beats tenure · Grok Digest",
+  "story_id": "2023456789012345678",
+  "story_url": "https://x.com/someone/status/2023456789012345678",
+  "history": [
+    { "role": "user", "text": "Who wrote this?" },
+    { "role": "assistant", "text": "It is from …" }
+  ]
+}
+```
+
+`question` is at most 1,000 characters. `story_id` and `story_url` are the bookmark or scan the passage belongs to, left out when the passage spans several posts. `history` is the conversation's last 6 turns, `user` or `assistant`, left out on the first question. The conversation lasts for the browser tab, per page, in `sessionStorage`.
+
+The answer is shown as Markdown: paragraphs, headings, lists, code, bold, italics, and `http` or `https` links, which open in a new tab with `rel="noopener noreferrer"`. HTML in the answer shows as plain text.
+
+The reader selects at least 3 characters in a bookmark card, a magazine issue, or its digest; a bar with the quote and an Ask button appears at the bottom of the screen, below the phone's own selection menu and inside its safe area. Ask opens the panel, which can be minimized to a button or closed.
 
 ## Package exports
 

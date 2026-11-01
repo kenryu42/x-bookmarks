@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import type { AstroIntegration } from "astro";
 import type { Plugin, ViteDevServer } from "vite";
 import { existsSync } from "node:fs";
+import { askConfigFile, askEndpoint } from "./lib/ask-config.ts";
 import { componentFile, CONFIG_FILE, CUSTOM_DIR, OVERRIDABLE_COMPONENTS, THEME_FILE } from "./lib/custom.ts";
 import { BOOKMARKS_FILE, fileExists, firstFileIn, jsonFilesIn, readJsonFile, SCANS_FILE } from "./lib/data-files.ts";
 import {
@@ -56,6 +57,8 @@ const MAGAZINE_ROUTES = [
   { pattern: "/magazine/[date]", entrypoint: "pages/magazine/[date].astro" },
   { pattern: "/magazine/rss.xml", entrypoint: `pages/magazine/rss.xml${SCRIPT_EXTENSION}` },
 ];
+
+const ASK_MODULE = fileURLToPath(new URL(`lib/ask-mount${SCRIPT_EXTENSION}`, import.meta.url));
 
 const RENDERER_PACKAGES = ["@astrojs/react", "react", "react-dom"];
 const PACKAGE_ENTRY = fileURLToPath(import.meta.url);
@@ -268,7 +271,7 @@ export default function grokDigest({ dataDir = "data" }: GrokDigestOptions = {})
   return {
     name: PACKAGE_NAME,
     hooks: {
-      "astro:config:setup": async ({ config, updateConfig, injectRoute, addWatchFile, logger }) => {
+      "astro:config:setup": async ({ config, updateConfig, injectRoute, injectScript, addWatchFile, logger }) => {
         const root = fileURLToPath(config.root);
         const file = path.resolve(root, dataDir, BOOKMARKS_FILE);
         const scansFile = path.resolve(root, dataDir, SCANS_FILE);
@@ -293,6 +296,14 @@ export default function grokDigest({ dataDir = "data" }: GrokDigestOptions = {})
           },
         });
         addWatchFile(magazineDir);
+        addWatchFile(askConfigFile(root));
+        const endpoint = await askEndpoint(root);
+        if (endpoint !== undefined) {
+          injectScript(
+            "page",
+            `import { startAsk } from ${importPath(ASK_MODULE)};\nstartAsk(${JSON.stringify(endpoint)});`,
+          );
+        }
         const hasIssues = (await issueFilesIn(magazineDir)).length > 0;
         for (const { pattern, entrypoint } of [...ROUTES, ...(hasIssues ? MAGAZINE_ROUTES : [])]) {
           injectRoute({ pattern, entrypoint: new URL(entrypoint, import.meta.url) });

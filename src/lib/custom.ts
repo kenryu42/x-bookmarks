@@ -29,9 +29,17 @@ export const componentFile = (name: OverridableComponent): string =>
 
 export const DEFAULT_TITLE = "Grok Digest";
 
+const RELAY_ENDPOINT = /^https?:\/\/[^\s?#]+$/;
+
+export const askEndpointSchema = z
+  .url({ protocol: /^https?$/ })
+  .regex(RELAY_ENDPOINT, "Must be an http or https address without a query or #fragment")
+  .transform((endpoint) => endpoint.replace(/\/+$/, ""));
+
 export const siteConfigSchema = z.strictObject({
   title: z.string().trim().min(1).default(DEFAULT_TITLE),
   swipeMode: z.boolean().default(true),
+  ask: z.strictObject({ endpoint: askEndpointSchema }).optional(),
 });
 
 export type PageSettings = Pick<z.output<typeof siteConfigSchema>, "swipeMode">;
